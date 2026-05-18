@@ -1,0 +1,13 @@
+{
+  "name": "vanz-deployer",
+  "version": "4.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "busboy": "^1.6.0",
+    "@upstash/redis": "^1.22.0"
+  }
+}

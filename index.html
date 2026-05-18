@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title> Deployer v1 • Auto Deploy GitHub & Vercel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #0b0f19;
+      overflow-x: hidden;
+    }
+    /* Background statis: animasi/orb sudut dihapus agar tampilan desktop lebih bersih */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.12), transparent 34%),
+        radial-gradient(circle at 50% 110%, rgba(129, 140, 248, 0.10), transparent 36%),
+        linear-gradient(135deg, #020617 0%, #0b0f19 48%, #111827 100%);
+      z-index: -1;
+      pointer-events: none;
+    }
+    .glass {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+    }
+    .btn-glow:hover {
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
+    }
+    .file-upload-area {
+      transition: all 0.3s ease;
+    }
+    .file-upload-area:hover {
+      border-color: #38bdf8;
+      background: rgba(56,189,248,0.05);
+    }
+    /* Loading spinner */
+    .loader {
+      border-top-color: #38bdf8;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .step-item {
+      transition: all 0.3s;
+    }
+    .step-item.done .step-circle {
+      background: #10b981;
+      border-color: #10b981;
+    }
+    .step-item.done .step-circle::after {
+      content: '✓';
+      position: absolute;
+      color: white;
+      font-size: 0.7rem;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+
+  <div class="glass p-6 sm:p-10 rounded-3xl w-full max-w-2xl relative z-10">
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <h1 class="text-5xl font-extrabold bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">
+        ⚡  Deployer v1
+      </h1>
+      <p class="text-slate-400 mt-2 text-sm">Upload HTML / ZIP, Auto GitHub Repo, Auto Deploy Vercel</p>
+    </div>
+
+    <!-- Input Nama Project -->
+    <div class="mb-6">
+      <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">📌 Nama Project (Repo)</label>
+      <input type="text" id="repoName" placeholder="misal: website-kerenku"
+            class="w-full bg-slate-900/60 border border-slate-700 rounded-xl p-4 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/30 transition-all text-white">
+    </div>
+
+    <!-- Upload File -->
+    <div class="mb-6">
+      <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">📂 Upload File</label>
+      <div id="fileUploadArea" class="file-upload-area border-2 border-dashed border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-sky-400 transition">
+        <input type="file" id="fileInput" accept=".html,.zip" class="hidden">
+        <div id="uploadPlaceholder">
+          <svg class="w-10 h-10 mx-auto text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          <p class="text-slate-400 text-sm">Klik untuk pilih file <strong>.html</strong> atau <strong>.zip</strong></p>
+          <p class="text-slate-600 text-xs mt-1">Maks 10MB</p>
+        </div>
+        <div id="fileInfo" class="hidden mt-2">
+          <span class="text-sky-400 font-semibold text-sm" id="fileNameDisplay"></span>
+          <button type="button" id="removeFileBtn" class="ml-2 text-red-400 hover:text-red-300 text-xs underline">Hapus</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider "Atau" -->
+    <div class="relative my-6">
+      <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-800"></div></div>
+      <div class="relative flex justify-center text-xs uppercase">
+        <span class="bg-[#0f172a] px-4 text-slate-500">Atau Tempel Kode</span>
+      </div>
+    </div>
+
+    <!-- Textarea -->
+    <div class="mb-8">
+      <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">📝 Kode HTML</label>
+      <textarea id="htmlContent" rows="6" placeholder="<html> ... </html>"
+               class="w-full bg-slate-900/60 border border-slate-700 rounded-xl p-4 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/30 transition-all"></textarea>
+    </div>
+
+    <!-- Tombol Deploy -->
+    <button id="btnDeploy" onclick="deployNow()"
+            class="btn-glow w-full bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold py-5 rounded-xl shadow-xl transition-all transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+      <span id="btnText">🚀 Deploy ke Cloud</span>
+    </button>
+
+    <!-- Status / Steps -->
+    <div id="statusBox" class="mt-8 hidden p-6 rounded-2xl bg-slate-900/80 border border-slate-700">
+      <div id="loadingSpinner" class="hidden flex items-center gap-3 mb-4">
+        <div class="loader w-6 h-6 border-2 border-slate-600 border-t-sky-400 rounded-full"></div>
+        <span class="text-sky-400 text-sm font-medium" id="loadingText">Memproses...</span>
+      </div>
+
+      <!-- Langkah-langkah -->
+      <div class="space-y-3" id="stepsContainer">
+        <div class="step-item flex items-center gap-3" data-step="upload">
+          <div class="step-circle relative w-6 h-6 rounded-full border-2 border-slate-600"></div>
+          <span class="text-sm text-slate-400">Upload & Validasi</span>
+        </div>
+        <div class="step-item flex items-center gap-3" data-step="extract">
+          <div class="step-circle relative w-6 h-6 rounded-full border-2 border-slate-600"></div>
+          <span class="text-sm text-slate-400">Ekstrak & Siapkan File</span>
+        </div>
+        <div class="step-item flex items-center gap-3" data-step="github">
+          <div class="step-circle relative w-6 h-6 rounded-full border-2 border-slate-600"></div>
+          <span class="text-sm text-slate-400">Push ke GitHub</span>
+        </div>
+        <div class="step-item flex items-center gap-3" data-step="vercel">
+          <div class="step-circle relative w-6 h-6 rounded-full border-2 border-slate-600"></div>
+          <span class="text-sm text-slate-400">Deploy ke Vercel</span>
+        </div>
+      </div>
+
+      <!-- Hasil -->
+      <div id="resultBox" class="hidden mt-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+        <p id="statusMsg" class="text-emerald-400 font-semibold text-sm"></p>
+        <div class="mt-3 space-y-2">
+          <div class="flex items-center justify-between bg-slate-800/50 rounded-lg px-3 py-2">
+            <span class="text-xs text-slate-400">🔗 Website</span>
+            <a id="linkResult" href="#" target="_blank" class="text-sky-400 text-xs underline truncate max-w-[200px]"></a>
+          </div>
+          <div class="flex items-center justify-between bg-slate-800/50 rounded-lg px-3 py-2">
+            <span class="text-xs text-slate-400">📁 Repository</span>
+            <a id="repoLink" href="#" target="_blank" class="text-sky-400 text-xs underline truncate max-w-[200px]"></a>
+          </div>
+        </div>
+        <button id="copyBtn" class="mt-4 w-full bg-sky-600 hover:bg-sky-500 text-white text-sm py-2 rounded-lg transition">📋 Salin URL Website</button>
+      </div>
+
+      <!-- Error -->
+      <div id="errorBox" class="hidden mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+        <p id="errorMsg" class="text-red-400 text-sm"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Elemen DOM
+    const repoNameInput = document.getElementById('repoName');
+    const fileInput = document.getElementById('fileInput');
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const removeFileBtn = document.getElementById('removeFileBtn');
+    const htmlContentTextarea = document.getElementById('htmlContent');
+    const btnDeploy = document.getElementById('btnDeploy');
+    const btnText = document.getElementById('btnText');
+    const statusBox = document.getElementById('statusBox');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const loadingText = document.getElementById('loadingText');
+    const stepsContainer = document.getElementById('stepsContainer');
+    const resultBox = document.getElementById('resultBox');
+    const statusMsg = document.getElementById('statusMsg');
+    const linkResult = document.getElementById('linkResult');
+    const repoLink = document.getElementById('repoLink');
+    const copyBtn = document.getElementById('copyBtn');
+    const errorBox = document.getElementById('errorBox');
+    const errorMsg = document.getElementById('errorMsg');
+
+    // Event: Klik area upload membuka file dialog
+    fileUploadArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileSelect);
+    removeFileBtn.addEventListener('click', removeFile);
+
+    function handleFileSelect(e) {
+      const file = fileInput.files[0];
+      if (!file) return;
+      fileNameDisplay.textContent = file.name;
+      uploadPlaceholder.classList.add('hidden');
+      fileInfo.classList.remove('hidden');
+      // Nonaktifkan textarea jika file dipilih
+      htmlContentTextarea.disabled = true;
+      htmlContentTextarea.classList.add('opacity-50');
+    }
+
+    function removeFile() {
+      fileInput.value = '';
+      uploadPlaceholder.classList.remove('hidden');
+      fileInfo.classList.add('hidden');
+      htmlContentTextarea.disabled = false;
+      htmlContentTextarea.classList.remove('opacity-50');
+    }
+
+    // Reset langkah ke awal
+    function resetSteps() {
+      document.querySelectorAll('.step-item').forEach(item => {
+        item.classList.remove('done');
+      });
+    }
+
+    // Tandai langkah sebagai selesai
+    function setStepDone(stepName) {
+      const step = document.querySelector(`.step-item[data-step="${stepName}"]`);
+      if (step) step.classList.add('done');
+    }
+
+    // Tampilkan status loading dengan langkah
+    function showLoading(text) {
+      statusBox.classList.remove('hidden');
+      resultBox.classList.add('hidden');
+      errorBox.classList.add('hidden');
+      loadingSpinner.classList.remove('hidden');
+      loadingText.textContent = text || 'Memproses...';
+      resetSteps();
+    }
+
+    // Tampilkan sukses
+    function showSuccess(message, url, repoUrl) {
+      loadingSpinner.classList.add('hidden');
+      resultBox.classList.remove('hidden');
+      errorBox.classList.add('hidden');
+      statusMsg.textContent = message;
+      linkResult.href = url;
+      linkResult.textContent = url;
+      repoLink.href = repoUrl;
+      repoLink.textContent = repoUrl;
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('URL berhasil disalin!');
+        });
+      };
+      // Semua langkah selesai
+      ['upload','extract','github','vercel'].forEach(setStepDone);
+    }
+
+    // Tampilkan error
+    function showError(message) {
+      loadingSpinner.classList.add('hidden');
+      resultBox.classList.add('hidden');
+      errorBox.classList.remove('hidden');
+      errorMsg.textContent = message;
+    }
+
+    // Deploy utama
+    async function deployNow() {
+      const repoName = repoNameInput.value.trim();
+      const file = fileInput.files[0];
+      const htmlContent = htmlContentTextarea.value;
+
+      if (!repoName) return alert('Isi nama project dulu!');
+
+      // Validasi: harus ada file atau kode
+      if (!file && !htmlContent) {
+        return alert('Upload file atau tempel kode HTML!');
+      }
+
+      // Disable tombol
+      btnDeploy.disabled = true;
+      btnText.innerText = '⏳ Sedang deploy...';
+
+      // Tampilkan status loading
+      showLoading('Menyiapkan...');
+
+      // Buat FormData
+      const formData = new FormData();
+      formData.append('repoName', repoName);
+      if (file) {
+        formData.append('file', file);
+      } else {
+        formData.append('htmlContent', htmlContent);
+      }
+
+      try {
+        const response = await fetch('/api/deploy', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          showSuccess(data.message, data.url, data.repo);
+        } else {
+          throw new Error(data.message || 'Terjadi kesalahan.');
+        }
+      } catch (err) {
+        showError(err.message);
+        console.error(err);
+      } finally {
+        btnDeploy.disabled = false;
+        btnText.innerText = '🚀 Deploy ke Cloud';
+        // Reset textarea disabled jika perlu
+        if (!file) {
+          htmlContentTextarea.disabled = false;
+          htmlContentTextarea.classList.remove('opacity-50');
+        }
+      }
+    }
+  </script>
+</body>
+</html>

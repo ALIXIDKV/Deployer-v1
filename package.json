@@ -1,6 +1,6 @@
 {
-  "name": "vanz-deployer",
-  "version": "4.0.0",
+  "name": "web-deployer",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vercel dev"

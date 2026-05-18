@@ -1,6 +1,5 @@
 import { SESSION_TTL_SECONDS } from '../config.js';
 
-// === Session Management (in-memory, untuk keamanan session) ===
 const sessions = new Map();
 
 function generateId() {
@@ -41,36 +40,13 @@ export function updateSession(sessionId, data) {
   return session;
 }
 
-export function expireSession(sessionId) {
-  sessions.delete(sessionId);
-}
+export function expireSession(sessionId) { sessions.delete(sessionId); }
+export function isSessionExpired(sessionId) { return !getSession(sessionId); }
+export function markSessionSuccess(sessionId) { return updateSession(sessionId, { status: 'success' }); }
+export function markSessionFailed(sessionId) { return updateSession(sessionId, { status: 'failed' }); }
 
-export function isSessionExpired(sessionId) {
-  return !getSession(sessionId);
-}
-
-export function markSessionSuccess(sessionId) {
-  return updateSession(sessionId, { status: 'success' });
-}
-
-export function markSessionFailed(sessionId) {
-  return updateSession(sessionId, { status: 'failed' });
-}
-
-// === Riwayat deploy (tetap sederhana) ===
+// Riwayat deploy (in-memory)
 let riwayat = [];
-
-export function addDeploy(data) {
-  riwayat.push({
-    ...data,
-    waktu: new Date().toISOString(),
-  });
-}
-
-export function getDeploys() {
-  return [...riwayat];
-}
-
-export function clearDeploys() {
-  riwayat = [];
-}
+export function addDeploy(data) { riwayat.push({ ...data, waktu: new Date().toISOString() }); }
+export function getDeploys() { return [...riwayat]; }
+export function clearDeploys() { riwayat = []; }
